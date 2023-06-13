@@ -1,0 +1,14 @@
+.mypy_cache/
+venv/
+.git/
+*.swp
+__pycache__/
+.ipynb_checkpoints/
+*.ipynb
+test.py
+json_result/moscow/*.json
+json_result/saint_petersburg/*.json
+logs/*.log
+html_pages/saint_petersburg/*.html
+html_pages/moscow/*.html
+.vscode/
