@@ -1,9 +1,9 @@
 import json
 import re
 
-from bs4 import BeautifulSoup
-
+from bs4 import BeautifulSoup, PageElement
 from init_data import ENCODING
+
 
 def get_page_in_html(path_to_html) -> BeautifulSoup:
     """Получаем страницу BeautifulSoup в из файла .html"""
@@ -25,7 +25,55 @@ def get_brands(soup: BeautifulSoup) -> list:
     return brands
 
 
-def making_list_of_items(soup, id=1) -> dict:
+def get_int_sum_out_of_element(price: PageElement) -> float:
+    """Получает целую часть сумму из элемента"""
+    str_int_price = price.find(
+        'span',
+        class_='product-price__sum-rubles'
+    ).text.replace(" ", "")
+
+    return float(re.sub(r'\W+', '', str_int_price))
+
+
+def get_penny_sum_out_of_element(price: PageElement) -> float:
+    """Получает копеечную часть суммы из элемента"""
+    _float = price.find('span', class_='product-price__sum-penny')
+    str_float_price = (
+        BeautifulSoup('0', 'lxml') if _float is None else _float
+    )
+    return float(re.sub(r'\W+', '', str_float_price.text))
+
+
+def calculate_int_and_penny_sums(
+        class_: PageElement) -> float:
+    """Складывает целую и копеечную части"""
+    int_price = get_int_sum_out_of_element(
+        class_
+    )
+
+    float_price = get_penny_sum_out_of_element(
+        class_
+    )
+
+    return int_price + float_price / 100
+
+
+def get_regular_price_out_of_element(el, promo_price: float) -> float:
+    """Возвращает"""
+    regular_price = (
+        el.find(
+            'div',
+            class_='catalog-2-level-product-card__offline-range-top'
+        ).find('span', class_='product-price__sum-rubles')
+    )
+    return (
+        promo_price if regular_price is None else float(
+            re.sub(r'\W+', '', regular_price.text)
+        )
+    )
+
+
+def making_list_of_items(soup: BeautifulSoup, id=1) -> dict:
     """Создаем список из html страницы"""
     elements = soup.find_all(attrs={'data-sku': True})
     products_available = {}
@@ -40,70 +88,40 @@ def making_list_of_items(soup, id=1) -> dict:
         for _brand in get_brands(soup):
             if _brand in name.lower():
                 brand = _brand
-
+        # Все ценны из тегов конкретного продукта
         prices = el.find(
             'ul',
             class_='product-range-prices__items').find_all(
                 'li', class_='product-range-prices__item'
             )
 
+        # Если длина цен больше двух, значит есть оптовая цена,
+        # иначе выводим промо цену
         if len(prices) > 1:
-            str_int_price = prices[0].find(
-                'span',
-                class_='product-price__sum-rubles'
-            ).text.replace(" ", "")
-
-            int_price = float(re.sub(r'\W+', '', str_int_price))
-            _float = prices[0].find('span', class_='product-price__sum-penny')
-            str_float_price = (
-                BeautifulSoup('0', 'lxml') if _float is None else _float
+            regular_price = calculate_int_and_penny_sums(
+                prices[0]
             )
-            float_price = float(re.sub(r'\W+', '', str_float_price.text))
-
-            regular_price = int_price + float_price / 100
-
-            str_int_price = prices[1].find(
-                'span',
-                class_='product-price__sum-rubles'
-            ).text.replace(" ", "")
-            int_price = float(re.sub(r'\W+', '', str_int_price))
-            _float = prices[1].find('span', class_='product-price__sum-penny')
-            str_float_price = (
-                BeautifulSoup('0', 'lxml') if _float is None else _float
-            )
-            float_price = float(re.sub(r'\W+', '', str_float_price.text))
-
-            text = (
-                prices[1]
-                .find('span', class_='product-range-prices__item-count')
-                .text.split()
-            )
-            min_to_buy = int(text[1])
 
             wholesale_price = {
-                'Цена': int_price + float_price / 100,
-                'Минимальное кол-во для преобритеня': min_to_buy,
+                'Цена': calculate_int_and_penny_sums(prices[1]),
+                'Минимальное кол-во для приобретения': int(
+                    (
+                        prices[1]
+                        .find('span', class_='product-range-prices__item-count')
+                        .text.split()
+                    )[1]
+                ),
             }
         else:
-            str_int_price = prices[0].find(
-                'span',
-                class_='product-price__sum-rubles'
-            ).text.replace(" ", "")
-            int_price = float(re.sub(r'\W+', '', str_int_price))
-            _float = prices[0].find('span', class_='product-price__sum-penny')
-            str_float_price = (
-                BeautifulSoup('0', 'lxml') if _float is None else _float
+            promo_price = calculate_int_and_penny_sums(
+                prices[0]
             )
-            float_price = float(re.sub(r'\W+', '', str_float_price.text))
-            promo_price = int_price + float_price / 100
-            regular_price = (
-                el.find(
-                    'div',
-                    class_='catalog-2-level-product-card__offline-range-top'
-                ).find('span', class_='product-price__sum-rubles')
+            regular_price = (get_regular_price_out_of_element(el, promo_price))
+
+            promo_price = (
+                'Отсутствует' if regular_price == promo_price else promo_price
             )
-            regular_price = promo_price if regular_price is None else float(
-                re.sub(r'\W+', '', regular_price.text))
+
             wholesale_price = None
 
         products_available[id] = {
