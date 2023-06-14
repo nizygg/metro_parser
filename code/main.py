@@ -3,7 +3,10 @@ from parse_data import get_page_in_html, making_list_of_items, parse_to_json
 
 
 def main():
-    url = 'https://online.metro-cc.ru/category/myasnye/myaso/govyadina'
+    url = (
+        'https://online.metro-cc.ru/category/'
+        'chaj-kofe-kakao/chay/cherniy-chay'
+    )
 
     for city in CITIES:
         for center in ALL_CENTERS[city]:
