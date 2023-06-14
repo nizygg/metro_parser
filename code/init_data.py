@@ -74,6 +74,6 @@ file_handler = logging.FileHandler(
 )
 logger = logging.getLogger(__name__)
 file_handler.setFormatter(
-    logging.Formatter('%(levelname)s - %(message)s'))
+    logging.Formatter('%(levelname)s - %(module)s - %(message)s'))
 logger.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
