@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 
 from init_data import ALL_CENTERS, CITIES, ENCODING, TIME_DELAY, logger
 
@@ -11,10 +12,16 @@ from init_data import ALL_CENTERS, CITIES, ENCODING, TIME_DELAY, logger
 def get_num_of_pages(driver) -> int:
     """Получаем кол-во страниц с товарами"""
     try:
-        catalog_paginate = driver.find_element(
-            By.XPATH,
-            '//*[@id="catalog-wrapper"]/main/div[2]/nav/ul'
-        ).get_attribute('outerHTML')
+        try:
+            catalog_paginate = driver.find_element(
+                By.XPATH,
+                '//*[@id="catalog-wrapper"]/main/div[2]/nav/ul'
+            ).get_attribute('outerHTML')
+        except NoSuchElementException:
+            catalog_paginate = driver.find_element(
+                By.XPATH,
+                '//*[@id="catalog-wrapper"]/main/div[3]/nav/ul'
+            ).get_attribute('outerHTML')
         soup = BeautifulSoup(catalog_paginate, 'lxml')
     except Exception:
         logger.error('возникла ошибка в get_num_of_pages()', exc_info=True)
@@ -42,10 +49,16 @@ def open_all_pages(driver, num_of_pages, city, center):
                 break
 
             # Находим кнопку "Показать еще"
-            find_more_button = driver.find_element(
-                By.XPATH,
-                '//*[@id="catalog-wrapper"]/main/div[2]/button'
-            )
+            try:
+                find_more_button = driver.find_element(
+                    By.CSS_SELECTOR,
+                    '#catalog-wrapper > main > div:nth-child(2) > button > span'
+                )
+            except NoSuchElementException:
+                find_more_button = driver.find_element(
+                    By.CSS_SELECTOR,
+                    '#catalog-wrapper > main > div:nth-child(3) > button > span'
+                )
 
             # Нажимаем на кнопку "Показать еще"
             driver.execute_script(
